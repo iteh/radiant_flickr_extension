@@ -3,8 +3,7 @@ module FlickrTags
   
   def get_flickr_iframe(user, param_name, param_val)
 <<EOS
-  <iframe align="center" src="http://www.flickr.com/slideShow/index.gne?user_id=#{user}&#{param_name}=#{param_val}" 
-    frameBorder="0" width="500" scrolling="no" height="500"></iframe>
+<iframe align="center" src="http://www.flickr.com/slideShow/index.gne?user_id=#{user}&#{param_name}=#{param_val}" frameBorder="0" width="500" scrolling="no" height="500"></iframe>
 EOS
   end
 
