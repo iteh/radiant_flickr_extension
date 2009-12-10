@@ -26,8 +26,24 @@ describe FlickrTags do
     
   end
   
+  describe "<r:flickr:photos>" do    
+    it "should search photos from a user" do
+      Flickr.stub_chain(:new, :photos, :search).and_return(flickr_photos_found)
+      
+      page(:home).should render("<r:flickr:photos user='12345678@N07'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+    end
+    
+  end
+  
   private
-
+    def flickr_photos_found
+      photo1 = stub('photo 1')
+      photo1.stub!(:title).and_return("Photo 1")
+      photo2 = stub('photo 2')
+      photo2.stub!(:title).and_return("Photo 2")
+      [photo1, photo2]
+    end
+    
     def page(symbol = nil)
       if symbol.nil?
         @page ||= pages(:assorted)
