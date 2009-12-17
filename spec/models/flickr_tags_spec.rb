@@ -5,12 +5,12 @@ describe FlickrTags do
   
   describe "<r:flickr:slideshow>" do
     it "should require the username attribute" do
-      message = "Please provide a Flickr user name in the flickr:slideshow tag's `user` attribute"
+      message = "slideshow tag requires a Flickr NSID in the `user' attribute"
       page(:home).should render("<r:flickr:slideshow />").with_error(message)
     end
     
     it "should require set or tags attributes" do
-      message = "Please provide a Flickr set ID in the flickr:slideshow tag's `set` attribute or a comma-separated list of Flickr tags in the `tags` attribute"
+      message = "slideshow tag must have a `set' or `tags' attribute"
       page(:home).should render("<r:flickr:slideshow user='foo' />").with_error(message)
     end
     
@@ -27,10 +27,24 @@ describe FlickrTags do
   end
   
   describe "<r:flickr:photos>" do    
-    it "should search photos from a user" do
+    it "should retrieve photos from a user" do
       Flickr.stub_chain(:new, :photos, :search).and_return(flickr_photos_found)
       
-      page(:home).should render("<r:flickr:photos user='12345678@N07'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+      page(:home).should render("<r:flickr:photos user='44965307@N07'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+    end
+    
+    it "should retrieve photos with tags from a user" do
+      Flickr.stub_chain(:new, :photos, :search).and_return(flickr_photos_found)
+      
+      page(:home).should render("<r:flickr:photos user='44965307@N07' tags='chapel'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+    end
+    
+    it "should retrieve photos with tags from all users" do
+      Flickr.stub_chain(:new, :photos, :search).and_return(flickr_photos_found)
+      
+      page(:home).should render("<r:flickr:photos tags='portfolio'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+    end
+    
     end
     
   end

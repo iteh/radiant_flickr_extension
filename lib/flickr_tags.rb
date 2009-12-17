@@ -1,6 +1,8 @@
 module FlickrTags
   include Radiant::Taggable
   
+  class TagError < StandardError; end
+  
   def get_flickr_iframe(user, param_name, param_val)
 <<EOS
 <iframe align="center" src="http://www.flickr.com/slideShow/index.gne?user_id=#{user}&#{param_name}=#{param_val}" frameBorder="0" width="500" scrolling="no" height="500"></iframe>
@@ -12,13 +14,21 @@ EOS
     tag.expand
   end
   
+  desc %{
+    Embeds a slideshow into a page using an iframe. Photographs for the slideshow can be selected using a Flickr photoset ID or a comma-separated list of Flickr tags.
+    
+    *Usage:*
+    
+    <pre><code><r:flickr:slideshow user="10622160@N00" tags="portfolio"/>
+    <r:flickr:slideshow user="10622160@N00" set="548374"/></code></pre>
+  }
   tag "flickr:slideshow" do |tag|
     attr = tag.attr.symbolize_keys
     
     if (attr[:user])
       user = attr[:user].strip
     else
-      raise StandardError.new("Please provide a Flickr user name in the flickr:slideshow tag's `user` attribute")
+      raise TagError.new("slideshow tag requires a Flickr NSID in the `user' attribute")
     end
     
     if attr[:set]
@@ -26,10 +36,17 @@ EOS
     elsif attr[:tags]
       get_flickr_iframe user, 'tags', attr[:tags].strip
     else
-      raise StandardError.new("Please provide a Flickr set ID in the flickr:slideshow tag's `set` attribute or a comma-separated list of Flickr tags in the `tags` attribute")
+      raise TagError.new("slideshow tag must have a `set' or `tags' attribute")
     end 
   end
+  
+  desc %{
+    Gives access to photos by a user, with a tag, or in a set.
 
+    *Usage:*
+    
+    <pre><code><r:flickr:photos [user="10622160@N00"] [tags="one, two"] [set="72157622808879505"]>...</r:flickr:photos></code></pre>
+  }
   tag 'flickr:photos' do |tag|
     
     cachekey = "flickrfotos-" + Date.today.to_s
@@ -49,8 +66,6 @@ EOS
           end
         end
       end
-
-      raise StandardError.new("The `photos' tag requires a user id in `user' paramater") if tag.attr['user'].blank?
 
       flickr = Flickr.new "#{RAILS_ROOT}/config/flickr.yml"
       tag.locals.photos = flickr.photos.search(:user_id => tag.attr['user'], 'per_page' => options[:limit], 'page' => options[:offset], 'tags' => tag.attr['tags'])
