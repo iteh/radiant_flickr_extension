@@ -14,6 +14,11 @@ describe FlickrTags do
       page(:home).should render("<r:flickr:slideshow user='foo' />").with_error(message)
     end
     
+    it "should not allow set and tags attributes" do
+      message = "slideshow tag must have either a `set' or `tags' attribute, not both"
+      page(:home).should render("<r:flickr:slideshow user='foo' tags='foo,bar' set='123456' />").with_error(message)
+    end
+    
     it "should render an iframe for tags" do
       expected = %Q{<iframe align="center" src="http://www.flickr.com/slideShow/index.gne?user_id=user&tags=foo,bar" frameBorder="0" width="500" scrolling="no" height="500"></iframe>\n}
       page(:home).should render("<r:flickr:slideshow user='user' tags='foo,bar' />").as(expected)
@@ -45,8 +50,16 @@ describe FlickrTags do
       page(:home).should render("<r:flickr:photos tags='portfolio'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
     end
     
+    it "should retrieve photos from a set" do
+      Flickr::Photosets::Photoset.stub_chain(:new, :get_photos).and_return(flickr_photos_found)
+      
+      page(:home).should render("<r:flickr:photos set='72157622808879505'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
     end
     
+    it "should require a user, tags, or set attribute" do
+      message = "The `photos' tag requires at least one `user' `tags' or `set' attribute."
+      page(:home).should render("<r:flickr:photos><r:photo:title /></r:flickr:photos>").with_error(message)
+    end
   end
   
   private

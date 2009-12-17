@@ -31,7 +31,9 @@ EOS
       raise TagError.new("slideshow tag requires a Flickr NSID in the `user' attribute")
     end
     
-    if attr[:set]
+    if attr[:set] && attr[:tags]
+      raise TagError.new("slideshow tag must have either a `set' or `tags' attribute, not both")
+    elsif attr[:set]
       get_flickr_iframe user, 'set_id', attr[:set].strip
     elsif attr[:tags]
       get_flickr_iframe user, 'tags', attr[:tags].strip
@@ -68,7 +70,14 @@ EOS
       end
 
       flickr = Flickr.new "#{RAILS_ROOT}/config/flickr.yml"
-      tag.locals.photos = flickr.photos.search(:user_id => tag.attr['user'], 'per_page' => options[:limit], 'page' => options[:offset], 'tags' => tag.attr['tags'])
+
+      if attr[:set]
+        tag.locals.photos = Flickr::Photosets::Photoset.new(flickr, {:id => tag.attr['set']}).get_photos('per_page' => options[:limit], 'page' => options[:offset])
+      elsif attr[:user] || attr[:tags]
+        tag.locals.photos = flickr.photos.search(:user_id => tag.attr['user'], 'per_page' => options[:limit], 'page' => options[:offset], 'tags' => tag.attr['tags'])
+      else
+        raise TagError.new("The `photos' tag requires at least one `user' `tags' or `set' attribute.") if tag.attr['user'].blank?
+      end
 
       result = ''
 
