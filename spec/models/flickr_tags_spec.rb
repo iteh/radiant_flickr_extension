@@ -50,10 +50,26 @@ describe FlickrTags do
       page(:home).should render("<r:flickr:photos tags='portfolio'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
     end
     
+    it "should retrieve specified page of photos" do
+      photos_api = stub('photos api')
+      photos_api.should_receive(:search).with(:user_id=>nil, 'tags'=>'portfolio', 'per_page'=>2, 'page'=>4).and_return(flickr_photos_found)
+      Flickr.stub_chain(:new, :photos).and_return(photos_api)
+      
+      page(:home).should render("<r:flickr:photos tags='portfolio' per_page='2' page='4'><r:photo:title /></r:flickr:photos>")
+    end
+    
     it "should retrieve photos from a set" do
       Flickr::Photosets::Photoset.stub_chain(:new, :get_photos).and_return(flickr_photos_found)
       
       page(:home).should render("<r:flickr:photos set='72157622808879505'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+    end
+    
+    it "should retrieve photos the specified page of photos from a set" do
+      photoset_api = stub('photoset api')
+      photoset_api.should_receive(:get_photos).with('per_page'=>2, 'page'=>4).and_return(flickr_photos_found)
+      Flickr::Photosets::Photoset.stub(:new).and_return(photoset_api)
+      
+      page(:home).should render("<r:flickr:photos set='72157622808879505' per_page='2' page='4'><r:photo:title /></r:flickr:photos>")
     end
     
     it "should require a user, tags, or set attribute" do

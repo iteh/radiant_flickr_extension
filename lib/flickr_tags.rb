@@ -59,7 +59,7 @@ EOS
 
       options = {}
 
-      [:limit, :offset].each do |symbol|
+      [:per_page, :page].each do |symbol|
         if number = attr[symbol]
           if number =~ /^\d{1,4}$/
             options[symbol] = number.to_i
@@ -72,9 +72,9 @@ EOS
       flickr = Flickr.new "#{RAILS_ROOT}/config/flickr.yml"
 
       if attr[:set]
-        tag.locals.photos = Flickr::Photosets::Photoset.new(flickr, {:id => tag.attr['set']}).get_photos('per_page' => options[:limit], 'page' => options[:offset])
+        tag.locals.photos = Flickr::Photosets::Photoset.new(flickr, {:id => tag.attr['set']}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
       elsif attr[:user] || attr[:tags]
-        tag.locals.photos = flickr.photos.search(:user_id => tag.attr['user'], 'per_page' => options[:limit], 'page' => options[:offset], 'tags' => tag.attr['tags'])
+        tag.locals.photos = flickr.photos.search(:user_id => tag.attr['user'], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => tag.attr['tags'])
       else
         raise TagError.new("The `photos' tag requires at least one `user' `tags' or `set' attribute.") if tag.attr['user'].blank?
       end
