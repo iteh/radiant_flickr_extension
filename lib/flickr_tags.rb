@@ -96,7 +96,7 @@ EOS
 
   tag 'flickr:photos:photo:src' do |tag|
     tag.attr['size'] ||= 'Medium'
-    tag.locals.photo.sizes.find{|p| p.label.downcase == tag.attr['size'].downcase}.source 
+    tag.locals.photo.image_url(tag.attr['size'].downcase.to_sym)
   end
 
   tag 'flickr:photos:photo:url' do |tag|
