@@ -72,11 +72,11 @@ EOS
       flickr = Flickr.new "#{RAILS_ROOT}/config/flickr.yml"
 
       if attr[:set]
-        tag.locals.photos = Flickr::Photosets::Photoset.new(flickr, {:id => tag.attr['set']}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
+        tag.locals.photos = Flickr::Photosets::Photoset.new(flickr, {:id => attr[:set]}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
       elsif attr[:user] || attr[:tags]
-        tag.locals.photos = flickr.photos.search(:user_id => tag.attr['user'], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => tag.attr['tags'])
+        tag.locals.photos = flickr.photos.search(:user_id => attr[:user], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => attr[:tags])
       else
-        raise TagError.new("The `photos' tag requires at least one `user' `tags' or `set' attribute.") if tag.attr['user'].blank?
+        raise TagError.new("The `photos' tag requires at least one `user' `tags' or `set' attribute.") if attr[:user].blank?
       end
 
       result = ''
