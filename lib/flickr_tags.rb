@@ -51,7 +51,7 @@ EOS
   }
   tag 'flickr:photos' do |tag|
     
-    cachekey = "flickrfotos-" + Date.today.to_s
+    cachekey = "flickrfotos-" + Date.today.to_s + tag.attr.to_s
     Rails.cache.fetch(cachekey) do
       logger.info "Flickr cache miss"
 

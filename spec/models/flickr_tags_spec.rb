@@ -76,6 +76,18 @@ describe FlickrTags do
       message = "The `photos' tag requires at least one `user' `tags' or `set' attribute."
       page(:home).should render("<r:flickr:photos><r:photo:title /></r:flickr:photos>").with_error(message)
     end
+    
+    it "should use the cached result when identical" do
+      photos_api = stub('photos api')
+      Flickr.stub_chain(:new, :photos).and_return(photos_api)      
+      text_to_render = "<r:flickr:photos tags='cached'><r:photo:title /></r:flickr:photos>"
+      
+      photos_api.should_receive(:search).and_return(flickr_photos_found)
+      page(:home).should render(text_to_render)
+      
+      photos_api.should_not_receive(:search)
+      page(:home).should render(text_to_render)
+    end
   end
   
   private
