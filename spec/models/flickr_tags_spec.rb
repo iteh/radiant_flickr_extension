@@ -88,14 +88,23 @@ describe FlickrTags do
       photos_api.should_not_receive(:search)
       page(:home).should render(text_to_render)
     end
+    
+    it "should not reuse the cached result when bodies differ" do
+      Flickr.stub_chain(:new, :photos, :search).and_return(flickr_photos_found)
+      
+      page(:home).should render("<r:flickr:photos tags='bodies differ'><r:photo:title /></r:flickr:photos>").as('Photo 1Photo 2')
+      page(:home).should render("<r:flickr:photos tags='bodies differ'><r:photo:description /></r:flickr:photos>").as('Description 1Description 2')
+    end
   end
   
   private
     def flickr_photos_found
       photo1 = stub('photo 1')
       photo1.stub!(:title).and_return("Photo 1")
+      photo1.stub!(:description).and_return("Description 1")
       photo2 = stub('photo 2')
       photo2.stub!(:title).and_return("Photo 2")
+      photo2.stub!(:description).and_return("Description 2")
       [photo1, photo2]
     end
     
