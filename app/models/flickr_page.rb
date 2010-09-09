@@ -1,5 +1,4 @@
 class FlickrPage < Page
-  
   include FlickrPageExtensions
   
   def cache?

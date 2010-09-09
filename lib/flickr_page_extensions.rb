@@ -69,8 +69,8 @@ module FlickrPageExtensions
     url = clean_url(url)
     if url =~ /^#{self.url}(.*)/
       item, action = $1, nil
-      if item =~ /^([\w|-]+)\/(set|tags)\/?$/
-        item, action = $1, $2, $3
+      if item =~ /^([\w|-]+)\/?(set|tags)?\/?$/
+        item, action = $1, $2||"set"
       end
       @item,@action = item, action
       self
@@ -78,5 +78,13 @@ module FlickrPageExtensions
       super
     end
   end
+
+  #def title
+  #  @set ? @set.title : super
+  #end
+
+  #def description
+  #  @set ? @set.description : super
+  #end
 
 end

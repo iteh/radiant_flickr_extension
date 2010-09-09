@@ -88,8 +88,11 @@ EOS
 
     if attr[:user] && @item && (@action.nil? || @action == 'set')
       sets = get_cached_sets(attr[:user])
-      set_id = sets.detect { |set| set.title.parameterize == @item }
-      tag.locals.photos = get_cached_set(set_id, options)
+      tag.locals.set = sets.detect { |set| set.title.parameterize == @item }
+      tag.locals.photos = get_cached_set(tag.locals.set.id, options)
+      tag.globals.page.title = tag.locals.set.title
+      tag.globals.page.description = tag.locals.set.description
+
     elsif attr[:set]
       tag.locals.photos = get_cached_set(attr[:set], options)
     elsif attr[:user] || attr[:tags]
@@ -113,6 +116,20 @@ EOS
 
     result
 
+  end
+
+  desc %{
+    The title of the photoset
+  }
+  tag 'flickr:photos:set_title' do |tag|
+    tag.locals.set.title
+  end
+
+  desc %{
+    The description of the photoset
+  }
+  tag 'flickr:photos:set_description' do |tag|
+    tag.locals.set.description
   end
 
   desc %{
@@ -220,6 +237,19 @@ EOS
   end
 
   desc %{
+    The local url for the gallery of the set
+
+    *Usage:*
+
+    <pre><code><r:flickr:sets:set:url path="some/custom/path"/></code></pre>
+  }
+  tag 'flickr:sets:set:url' do |tag|
+    attr = tag.attr.symbolize_keys
+    path = attr[:path] || tag.globals.page.url
+    File.join(path,tag.locals.set.title.parameterize)
+  end
+
+  desc %{
     The description attribute of the set
 
     *Usage:*
@@ -272,9 +302,9 @@ EOS
   end
 
   def get_cached_set(set_id, options={:per_page => 500, :page => 1})
-    APICache.get("flickr_set_#{set_id.id}", :cache => 3600, :valid => :forever, :fail => {}) do
+    APICache.get("flickr_set_#{set_id}", :cache => 3600, :valid => :forever, :fail => {}) do
       begin
-        Flickr::Photosets::Photoset.new(flickr, {:id => set_id.id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
+        Flickr::Photosets::Photoset.new(flickr, {:id => set_id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
       rescue Exception => e
         logger.error "Unable to fetch flickr set: #{e} #{e.inspect}"
       end
