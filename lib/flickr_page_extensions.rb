@@ -66,11 +66,16 @@ module FlickrPageExtensions
   end
 
   def find_by_url(url, live = true, clean = false)
+
     url = clean_url(url)
     if url =~ /^#{self.url}(.*)/
-      item, action = $1, nil
+      item, action = $1, "index"
       if item =~ /^([\w|-]+)\/?(set|tags)?\/?$/
         item, action = $1, $2||"set"
+        case action
+          when "set" then setup_set_page(item)
+          when "index" then setup_index_page
+        end
       end
       @item,@action = item, action
       self
@@ -79,12 +84,23 @@ module FlickrPageExtensions
     end
   end
 
-  #def title
-  #  @set ? @set.title : super
-  #end
+  def setup_set_page(item)
+    @flickr_page_type = :flickr_set
+    @flickr_usr_sets = get_cached_sets(current_page_flickr_user)
+    @flickr_current_set = @flickr_usr_sets.detect { |set| set.title.parameterize == item }
+  end
 
-  #def description
-  #  @set ? @set.description : super
-  #end
+  def setup_index_page
+    @flickr_page_type = :flickr_index
+    @flickr_usr_sets = get_cached_sets(current_page_flickr_user)
+  end
+
+  def title
+    :flickr_set == @flickr_page_type ? @flickr_current_set.title : super
+  end
+
+  def description
+    :flickr_set == @flickr_page_type ? @flickr_current_set.description : super
+  end
 
 end

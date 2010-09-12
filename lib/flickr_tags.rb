@@ -2,18 +2,18 @@ module FlickrTags
 
   #monkey patch flickr for primary
   class Flickr::Photosets::Photoset
-    attr_accessor :id,:num_photos,:title,:description,:primary
+    attr_accessor :id, :num_photos, :title, :description, :primary
   end
 
   class Flickr::Photosets < Flickr::Base
     def create_attributes(photoset)
       {
-        :id => photoset[:id],
-        :num_photos => photoset[:photos],
-        :title => photoset.title.to_s,
-        :description => photoset.description.to_s ,
-        :primary => photoset[:primary]
-       }
+              :id => photoset[:id],
+              :num_photos => photoset[:photos],
+              :title => photoset.title.to_s,
+              :description => photoset.description.to_s,
+              :primary => photoset[:primary]
+      }
     end
 
   end
@@ -64,6 +64,9 @@ EOS
 
   desc %{
     Gives access to photos by a user, with a tag, or in a set.
+    if you set the page type to FlickrPage and set the flickr_user in the config yaml or in the settings
+    currently with the key flickr.page_id.{Page_ID}.user and ommit user, tags, and the set attribute it will
+    default to the set with the slug of the set title in parameterized form
 
     *Usage:*
     
@@ -86,13 +89,8 @@ EOS
       end
     end
 
-    if attr[:user] && @item && (@action.nil? || @action == 'set')
-      sets = get_cached_sets(attr[:user])
-      tag.locals.set = sets.detect { |set| set.title.parameterize == @item }
-      tag.locals.photos = get_cached_set(tag.locals.set.id, options)
-      tag.globals.page.title = tag.locals.set.title
-      tag.globals.page.description = tag.locals.set.description
-
+    if :flickr_set == @flickr_page_type && !(attr[:set] || attr[:user] || attr[:tags])
+      tag.locals.photos = get_cached_set(@flickr_current_set.id)
     elsif attr[:set]
       tag.locals.photos = get_cached_set(attr[:set], options)
     elsif attr[:user] || attr[:tags]
@@ -218,6 +216,52 @@ EOS
   end
 
   desc %{
+    Display Info about a flickr set
+
+    you can ommit the set id if you are on a FlickrPage displaying a set
+    *Usage:*
+
+    <pre><code><r:flickr:set [set="the-set-id"]/></code></pre>
+  }
+  tag 'flickr:set' do |tag|
+    attr = tag.attr.symbolize_keys
+    if (@flickr_page_type == :flickr_set && @flickr_current_set.nil?) then
+      raise TagError.new("you are on a set page, but we could not find the set of the page")
+    elsif @flickr_page_type != :flickr_set && attr[:set].blank? then
+      raise TagError.new("if you are not in a set context you must provide a set attribute")
+    end
+
+    if tag.locals.set = attr[:set].blank? ? @flickr_current_set : get_cached_set(attr[:set])
+      tag.expand
+    end
+  end
+
+  [:title, :description, :num_photos, :id].each do |method|
+    desc %{
+    The #{method.to_s} attribute of the set
+
+    *Usage:*
+
+    <pre><code><r:flickr:set:#{method.to_s}/></code></pre>
+  }
+    tag "flickr:set:#{method.to_s}" do |tag|
+      tag.locals.set.send(method)
+    end
+  end
+
+
+  desc %{
+    The title attribute of the set
+
+    *Usage:*
+
+    <pre><code><r:flickr:set:title/></code></pre>
+  }
+  tag 'flickr:sets:set:title' do |tag|
+    tag.locals.set.title
+  end
+
+  desc %{
     The Context of the set through <r:flickr:sets/>
   }
   tag 'flickr:sets:set' do |tag|
@@ -246,7 +290,7 @@ EOS
   tag 'flickr:sets:set:url' do |tag|
     attr = tag.attr.symbolize_keys
     path = attr[:path] || tag.globals.page.url
-    File.join(path,tag.locals.set.title.parameterize)
+    File.join(path, tag.locals.set.title.parameterize)
   end
 
   desc %{
@@ -260,7 +304,7 @@ EOS
     tag.locals.set.description
   end
 
-    desc %{
+  desc %{
     The Context of the primary image through <r:flickr:sets:set:primary/>
   }
   tag 'flickr:sets:set:primary' do |tag|
@@ -302,7 +346,7 @@ EOS
   end
 
   def get_cached_set(set_id, options={:per_page => 500, :page => 1})
-    APICache.get("flickr_set_#{set_id}", :cache => 3600, :valid => :forever, :fail => {}) do
+    APICache.get("flickr_set_#{set_id}_#{options[:per_page]}_#{options[:page]}", :cache => 3600, :valid => :forever, :fail => {}) do
       begin
         Flickr::Photosets::Photoset.new(flickr, {:id => set_id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
       rescue Exception => e
@@ -323,7 +367,17 @@ EOS
   end
 
   def flickr
-    @flickr ||= Flickr.new "#{RAILS_ROOT}/config/flickr.yml"
+    @flickr ||= Flickr.new(flickr_config)
+  end
+
+  def flickr_config
+    @flickr_config ||= YAML.load_file("#{RAILS_ROOT}/config/flickr.yml")
+  end
+
+  def current_page_flickr_user
+    page_setting_flickr_user = Radiant::Config["flickr.page_id.#{self.id}.user"]
+    config_setting_flickr_user = flickr_config["flickr_user"]
+    (page_setting_flickr_user && !page_setting_flickr_user.empty?) ? page_setting_flickr_user : config_setting_flickr_user
   end
 
 end

@@ -9,6 +9,5 @@ class FlickrExtension < Radiant::Extension
   def activate
     Page.send :include, FlickrTags
     FlickrPage
-    FlickrCachedPage
   end
 end
