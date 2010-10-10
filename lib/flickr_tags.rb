@@ -17,6 +17,22 @@ module FlickrTags
     end
 
   end
+  class Flickr::Photos
+    def protected_find_id(id)
+      self.send(:find_by_id,id)
+    end
+  end
+
+  class Flickr::Photos::Photo
+     def to_json
+      {
+      :is_public => "#{self.is_public}",
+      :id => "#{self.id}", :owner => "#{self.owner}",
+      :secret => "#{self.secret}", :server =>"#{self.server}", :farm => "#{self.farm}",
+      :title => "#{self.title}",  :is_friend => "#{self.is_friend}", :is_family => "#{self.is_family}"
+      }.to_json
+     end
+  end
 
   include Radiant::Taggable
 
@@ -94,7 +110,7 @@ EOS
     elsif attr[:set]
       tag.locals.photos = get_cached_set(attr[:set], options)
     elsif attr[:user] || attr[:tags]
-      tag.locals.photos = APICache.get("flickr_#{attr[:user]}_#{attr[:tags]}", :cache => 3600, :valid => :forever, :fail => {}) do
+      tag.locals.photos = APICache.get("flickr_#{attr[:user]}_#{attr[:tags]}", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => {}) do
         begin
           tag.locals.photos = flickr.photos.search(:user_id => attr[:user], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => attr[:tags])
         rescue Exception => e
@@ -250,16 +266,6 @@ EOS
   end
 
 
-  desc %{
-    The title attribute of the set
-
-    *Usage:*
-
-    <pre><code><r:flickr:set:title/></code></pre>
-  }
-  tag 'flickr:sets:set:title' do |tag|
-    tag.locals.set.title
-  end
 
   desc %{
     The Context of the set through <r:flickr:sets/>
@@ -309,6 +315,7 @@ EOS
   }
   tag 'flickr:sets:set:primary' do |tag|
     tag.locals.photo = get_cached_photo(tag.locals.set.primary)
+    # tag.locals.photo = flickr.photos.find_by_id(tag.locals.set.primary)
     tag.expand unless tag.locals.photo.nil?
   end
 
@@ -336,7 +343,7 @@ EOS
   private
 
   def get_cached_sets(user)
-    APICache.get("flickr_#{user}_set_list", :cache => 3600, :valid => :forever, :fail => {}) do
+    APICache.get("flickr_#{user}_set_list", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => {}) do
       begin
         flickr.photosets.get_list :user_id => user
       rescue Exception => e
@@ -346,7 +353,7 @@ EOS
   end
 
   def get_cached_set(set_id, options={:per_page => 500, :page => 1})
-    APICache.get("flickr_set_#{set_id}_#{options[:per_page]}_#{options[:page]}", :cache => 3600, :valid => :forever, :fail => {}) do
+    APICache.get("flickr_set_#{set_id}_#{options[:per_page]}_#{options[:page]}", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => {}) do
       begin
         Flickr::Photosets::Photoset.new(flickr, {:id => set_id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
       rescue Exception => e
@@ -355,15 +362,16 @@ EOS
     end
   end
 
-  def get_cached_photo(id)
-    APICache.get("flickr_photo_info_#{id}", :cache => 3600, :valid => :forever, :fail => nil) do
+  def get_cached_photo(photo_id)
+    resp = JSON.parse(APICache.get("flickr_photo_info_#{photo_id}", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => "{}") do
       begin
-        flickr.photos.find_by_id id
+        flickr.photos.protected_find_id(photo_id).to_json
       rescue Exception => e
         logger.error "Unable to fetch flickr photo info: #{e} #{e.inspect}"
       end
-    end
-
+    end)
+    resp
+    Flickr::Photos::Photo.new(flickr,resp)
   end
 
   def flickr
