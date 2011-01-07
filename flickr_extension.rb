@@ -7,7 +7,7 @@ class FlickrExtension < Radiant::Extension
   url "http://github.com/iteh/flickr"
   
   def activate 
-    Radiant::Config["flickr.cache_time"] = "86400" if Radiant::Config["flickr.cache_time"].nil?
+#    Radiant::Config["flickr.cache_time"] = "86400" if Radiant::Config["flickr.cache_time"].nil?
     Page.send :include, FlickrTags
     FlickrPage
   end

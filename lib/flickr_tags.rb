@@ -110,7 +110,7 @@ EOS
     elsif attr[:set]
       tag.locals.photos = get_cached_set(attr[:set], options)
     elsif attr[:user] || attr[:tags]
-      tag.locals.photos = APICache.get("flickr_#{attr[:user]}_#{attr[:tags]}", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => {}) do
+      tag.locals.photos = Rails.cache.fetch("flickr_#{attr[:user]}_#{attr[:tags]}", :expires_in => flickr_expires_in) do
         begin
           tag.locals.photos = flickr.photos.search(:user_id => attr[:user], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => attr[:tags])
         rescue Exception => e
@@ -343,7 +343,7 @@ EOS
   private
 
   def get_cached_sets(user)
-    APICache.get("flickr_#{user}_set_list", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => {}) do
+    Rails.cache.fetch("flickr_#{user}_set_list",  :expires_in => flickr_expires_in) do
       begin
         flickr.photosets.get_list :user_id => user
       rescue Exception => e
@@ -353,7 +353,7 @@ EOS
   end
 
   def get_cached_set(set_id, options={:per_page => 500, :page => 1})
-    APICache.get("flickr_set_#{set_id}_#{options[:per_page]}_#{options[:page]}", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => {}) do
+    Rails.cache.fetch("flickr_set_#{set_id}_#{options[:per_page]}_#{options[:page]}", :expires_in => flickr_expires_in) do
       begin
         Flickr::Photosets::Photoset.new(flickr, {:id => set_id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
       rescue Exception => e
@@ -363,12 +363,14 @@ EOS
   end
 
   def get_cached_photo(photo_id)
-    resp = JSON.parse(APICache.get("flickr_photo_info_#{photo_id}", :cache => Radiant::Config["flickr.cache_time"].to_i, :valid => :forever, :fail => "{}") do
+    resp = JSON.parse(Rails.cache.fetch("flickr_photo_info_#{photo_id}", :expires_in => flickr_expires_in) do
       begin
-        flickr.photos.protected_find_id(photo_id).to_json
+        result = flickr.photos.protected_find_id(photo_id).to_json
       rescue Exception => e
         logger.error "Unable to fetch flickr photo info: #{e} #{e.inspect}"
+        result = {}
       end
+      result
     end)
     resp
     Flickr::Photos::Photo.new(flickr,resp)
@@ -386,6 +388,12 @@ EOS
     page_setting_flickr_user = Radiant::Config["flickr.page_id.#{self.id}.user"]
     config_setting_flickr_user = flickr_config["flickr_user"]
     (page_setting_flickr_user && !page_setting_flickr_user.empty?) ? page_setting_flickr_user : config_setting_flickr_user
+  end
+
+  def flickr_expires_in
+    return @flickr_expires_in if @flickr_expires_in
+    config_expires_in = Radiant::Config["flickr.expires_in"] ? eval(Radiant::Config["flickr.expires_in"]) : nil
+    @flickr_expires_in = config_expires_in || 5.minutes  
   end
 
 end
