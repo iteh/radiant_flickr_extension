@@ -112,7 +112,9 @@ EOS
     elsif attr[:user] || attr[:tags]
       tag.locals.photos = Rails.cache.fetch("flickr_#{attr[:user]}_#{attr[:tags]}", :expires_in => flickr_expires_in) do
         begin
-          tag.locals.photos = flickr.photos.search(:user_id => attr[:user], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => attr[:tags])
+          photos = flickr.photos.search(:user_id => attr[:user], 'per_page' => options[:per_page], 'page' => options[:page], 'tags' => attr[:tags])
+          photos.each {|photo| photo.description}
+          photos
         rescue Exception => e
           logger.error "Unable to fetch flickr photos: #{e} #{e.inspect}"
         end
@@ -355,7 +357,10 @@ EOS
   def get_cached_set(set_id, options={:per_page => 500, :page => 1})
     Rails.cache.fetch("flickr_set_#{set_id}_#{options[:per_page]}_#{options[:page]}", :expires_in => flickr_expires_in) do
       begin
-        Flickr::Photosets::Photoset.new(flickr, {:id => set_id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
+        photos = Flickr::Photosets::Photoset.new(flickr, {:id => set_id}).get_photos('per_page' => options[:per_page], 'page' => options[:page])
+        photos.each {|photo|
+          photo.description}
+        photos
       rescue Exception => e
         logger.error "Unable to fetch flickr set: #{e} #{e.inspect}"
       end
